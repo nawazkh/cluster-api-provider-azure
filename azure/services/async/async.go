@@ -132,6 +132,8 @@ func (s *Service) CreateOrUpdateResource(ctx context.Context, spec azure.Resourc
 		return existingResource, nil
 	}
 
+	//TODO: @nawazkh. Or do you comapare the resources here? If yes, it would affect the behavior of a lot of resources
+
 	// Create or update the resource with the desired parameters.
 	logMessageVerbPrefix := "creat"
 	if existingResource != nil {

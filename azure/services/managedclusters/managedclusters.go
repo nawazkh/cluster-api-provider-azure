@@ -68,7 +68,7 @@ func (s *Service) Name() string {
 
 // Reconcile idempotently creates or updates a managed cluster.
 func (s *Service) Reconcile(ctx context.Context) error {
-	ctx, _, done := tele.StartSpanWithLogger(ctx, "managedclusters.Service.Reconcile")
+	ctx, log, done := tele.StartSpanWithLogger(ctx, "managedclusters.Service.Reconcile")
 	defer done()
 
 	ctx, cancel := context.WithTimeout(ctx, reconciler.DefaultAzureServiceReconcileTimeout)
@@ -79,6 +79,8 @@ func (s *Service) Reconcile(ctx context.Context) error {
 		return nil
 	}
 
+	// TODO: @nawazkh do you put the diff here?
+	// If yes, how do you compare the typeCasted struct b/w managedClusterSpec and containerservice.ManagedCluster ?
 	result, resultErr := s.CreateOrUpdateResource(ctx, managedClusterSpec, serviceName)
 	if resultErr == nil {
 		managedCluster, ok := result.(containerservice.ManagedCluster)
