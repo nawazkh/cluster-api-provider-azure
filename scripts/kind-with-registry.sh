@@ -144,6 +144,7 @@ EOF
         echo "USER_IDENTITY environment variable required if not bringing your own identity via AZURE_CLIENT_ID_USER_ASSIGNED_IDENTITY"
         exit 1
     fi
+    echo "Creating identity '${USER_IDENTITY}' in '${AZWI_RESOURCE_GROUP}'"
     az identity create -n "${USER_IDENTITY}" -g "${AZWI_RESOURCE_GROUP}" -l "${AZWI_LOCATION}" --output none --only-show-errors --tags creationTimestamp="${TIMESTAMP}" jobName="${JOB_NAME}" buildProvenance="${BUILD_PROVENANCE}"
     AZURE_IDENTITY_ID=$(az identity show -n "${USER_IDENTITY}" -g "${AZWI_RESOURCE_GROUP}" --query clientId -o tsv)
     AZURE_IDENTITY_ID_PRINCIPAL_ID=$(az identity show -n "${USER_IDENTITY}" -g "${AZWI_RESOURCE_GROUP}" --query principalId -o tsv)
@@ -151,11 +152,13 @@ EOF
     until az role assignment create --assignee-object-id "${AZURE_IDENTITY_ID_PRINCIPAL_ID}" --role "Contributor" --scope "/subscriptions/${AZURE_SUBSCRIPTION_ID}" --assignee-principal-type ServicePrincipal --output none --only-show-errors; do
       sleep 5
     done
+    echo "Creating federated credentials for capz-federated-identity"
     az identity federated-credential create -n "capz-federated-identity" \
       --identity-name "${USER_IDENTITY}" \
       -g "${AZWI_RESOURCE_GROUP}" \
       --issuer "${SERVICE_ACCOUNT_ISSUER}" \
       --subject "system:serviceaccount:capz-system:capz-manager" --output none --only-show-errors
+    echo "Creating federated credentials for aso-federated-identity"
     az identity federated-credential create -n "aso-federated-identity" \
       --identity-name "${USER_IDENTITY}" \
       -g "${AZWI_RESOURCE_GROUP}" \
