@@ -87,27 +87,37 @@ function checkAZWIENVPreReqsAndCreateFiles() {
   fi
   if [ -z "${SERVICE_ACCOUNT_ISSUER}" ]; then
     # check if user is logged into azure cli
+    echo "Checking if user is logged into Azure CLI..."
     if ! az account show > /dev/null 2>&1; then
         echo "Please login to Azure CLI using 'az login'"
         exit 1
     fi
 
+    echo "Creating Workload Identity resource group exists"
     if [ -z "${AZWI_RESOURCE_GROUP}" ]; then
       echo "AZWI_RESOURCE_GROUP environment variable required - Azure resource group to store required Workload Identity artifacts"
       exit 1
     fi
+
+    echo "Checking if resource group '${AZWI_RESOURCE_GROUP}' exists in '${AZWI_LOCATION}'"
     if [ "$(az group exists --name "${AZWI_RESOURCE_GROUP}" --output tsv)" == 'false' ]; then
       echo "Creating resource group '${AZWI_RESOURCE_GROUP}' in '${AZWI_LOCATION}'"
       az group create --name "${AZWI_RESOURCE_GROUP}" --location "${AZWI_LOCATION}" --output none --only-show-errors --tags creationTimestamp="${TIMESTAMP}" jobName="${JOB_NAME}" buildProvenance="${BUILD_PROVENANCE}"
     fi
+
     # Ensure that our connection to storage is inherited from the existing Azure login context
+    echo "unsetting AZURE_STORAGE_KEY and AZURE_STORAGE_ACCOUNT to inherit from Azure CLI login context"
     unset AZURE_STORAGE_KEY
     unset AZURE_STORAGE_ACCOUNT
+
+    echo "Checking if storage account '${AZWI_STORAGE_ACCOUNT}' exists in '${AZWI_RESOURCE_GROUP}'"
     if ! az storage account show --name "${AZWI_STORAGE_ACCOUNT}" --resource-group "${AZWI_RESOURCE_GROUP}" > /dev/null 2>&1; then
       echo "Creating storage account '${AZWI_STORAGE_ACCOUNT}' in '${AZWI_RESOURCE_GROUP}'"
       az storage account create --resource-group "${AZWI_RESOURCE_GROUP}" --name "${AZWI_STORAGE_ACCOUNT}" --output none --only-show-errors --tags creationTimestamp="${TIMESTAMP}" jobName="${JOB_NAME}" buildProvenance="${BUILD_PROVENANCE}"
       az storage blob service-properties update --account-name "${AZWI_STORAGE_ACCOUNT}" --static-website
     fi
+
+    echo "Checking if storage container '${AZWI_STORAGE_CONTAINER}' exists in '${AZWI_STORAGE_ACCOUNT}'"
     if ! az storage container show --name "${AZWI_STORAGE_CONTAINER}" --account-name "${AZWI_STORAGE_ACCOUNT}" > /dev/null 2>&1; then
       echo "Creating storage container '${AZWI_STORAGE_CONTAINER}' in '${AZWI_STORAGE_ACCOUNT}'"
       az storage container create --name "${AZWI_STORAGE_CONTAINER}" --account-name "${AZWI_STORAGE_ACCOUNT}" --output none --only-show-errors
@@ -143,6 +153,7 @@ EOF
     # az storage account update -n "${AZWI_STORAGE_ACCOUNT}" -g "${AZWI_RESOURCE_GROUP}" --subscription "${AZURE_SUBSCRIPTION_ID}" --allow-shared-key-access=false --output none --only-show-errors
   fi
   if [ -z "${AZURE_CLIENT_ID_USER_ASSIGNED_IDENTITY}" ]; then
+    echo "Checking if user-assigned identity '${USER_IDENTITY}' exists in '${AZWI_RESOURCE_GROUP}'"
     if [ -z "${USER_IDENTITY}" ]; then
         echo "USER_IDENTITY environment variable required if not bringing your own identity via AZURE_CLIENT_ID_USER_ASSIGNED_IDENTITY"
         exit 1
