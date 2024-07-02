@@ -175,7 +175,7 @@ function upload_to_blob() {
   local blob_name=$2
 
   echo "Uploading ${file_path} to '${AZWI_STORAGE_ACCOUNT}' storage account"
-  az storage blob upload "${AZWI_AUTH_MODE}" \
+  az storage blob upload --auth-mode "login" \
       --container-name "${AZWI_STORAGE_CONTAINER}" \
       --file "${file_path}" \
       --name "${blob_name}" \
