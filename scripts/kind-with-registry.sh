@@ -105,12 +105,12 @@ function checkAZWIENVPreReqsAndCreateFiles() {
     unset AZURE_STORAGE_ACCOUNT
     if ! az storage account show --name "${AZWI_STORAGE_ACCOUNT}" --resource-group "${AZWI_RESOURCE_GROUP}" > /dev/null 2>&1; then
       echo "Creating storage account '${AZWI_STORAGE_ACCOUNT}' in '${AZWI_RESOURCE_GROUP}'"
-      az storage account create "${AZWI_AUTH_MODE}" --resource-group "${AZWI_RESOURCE_GROUP}" --name "${AZWI_STORAGE_ACCOUNT}" --output none --only-show-errors --tags creationTimestamp="${TIMESTAMP}" jobName="${JOB_NAME}" buildProvenance="${BUILD_PROVENANCE}"
-      az storage blob service-properties update "${AZWI_AUTH_MODE}" --account-name "${AZWI_STORAGE_ACCOUNT}" --static-website
+      az storage account create --resource-group "${AZWI_RESOURCE_GROUP}" --name "${AZWI_STORAGE_ACCOUNT}" --output none --only-show-errors --tags creationTimestamp="${TIMESTAMP}" jobName="${JOB_NAME}" buildProvenance="${BUILD_PROVENANCE}"
+      az storage blob service-properties update --account-name "${AZWI_STORAGE_ACCOUNT}" --static-website
     fi
     if ! az storage container show --name "${AZWI_STORAGE_CONTAINER}" --account-name "${AZWI_STORAGE_ACCOUNT}" > /dev/null 2>&1; then
       echo "Creating storage container '${AZWI_STORAGE_CONTAINER}' in '${AZWI_STORAGE_ACCOUNT}'"
-      az storage container create "${AZWI_AUTH_MODE}" --name "${AZWI_STORAGE_CONTAINER}" --account-name "${AZWI_STORAGE_ACCOUNT}" --output none --only-show-errors
+      az storage container create --name "${AZWI_STORAGE_CONTAINER}" --account-name "${AZWI_STORAGE_ACCOUNT}" --output none --only-show-errors
     fi
     SERVICE_ACCOUNT_ISSUER=$(az storage account show --name "${AZWI_STORAGE_ACCOUNT}" -o json | jq -r .primaryEndpoints.web)
     export SERVICE_ACCOUNT_ISSUER
