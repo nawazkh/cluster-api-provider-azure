@@ -88,12 +88,11 @@ function checkAZWIENVPreReqsAndCreateFiles() {
   if [ -z "${SERVICE_ACCOUNT_ISSUER}" ]; then
     # check if user is logged into azure cli
     echo "Checking if user is logged into Azure CLI..."
-    if ! az account show > /dev/null 2>&1; then
+    if ! az account show; then
         echo "Please login to Azure CLI using 'az login'"
         exit 1
     fi
 
-    echo "Creating Workload Identity resource group exists"
     if [ -z "${AZWI_RESOURCE_GROUP}" ]; then
       echo "AZWI_RESOURCE_GROUP environment variable required - Azure resource group to store required Workload Identity artifacts"
       exit 1

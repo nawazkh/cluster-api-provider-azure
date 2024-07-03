@@ -31,7 +31,7 @@ if [[ -z "$(command -v az)" ]]; then
     # TODO (@nawazkh): remove below echo after POC.
     echo "Using federated token for Azure CLI login, AZURE_CLIENT_ID ${AZURE_CLIENT_ID}, AZURE_TENANT_ID ${AZURE_TENANT_ID}, AZURE_FEDERATED_TOKEN_FILE ${AZURE_FEDERATED_TOKEN_FILE}"
     # TODO (@nawazkh): remove --debug flag.
-    az login --service-principal -u "${AZURE_CLIENT_ID}" -t "${AZURE_TENANT_ID}" --federated-token "$(cat "${AZURE_FEDERATED_TOKEN_FILE}")" --debug > /dev/null
+    az login --service-principal -u "${AZURE_CLIENT_ID}" -t "${AZURE_TENANT_ID}" --federated-token "$(cat "${AZURE_FEDERATED_TOKEN_FILE}")" > /dev/null
   else
     az login --service-principal -u "${AZURE_CLIENT_ID}" -p "${AZURE_CLIENT_SECRET}" --tenant "${AZURE_TENANT_ID}" > /dev/null
   fi
