@@ -37,9 +37,7 @@ export SERVICE_ACCOUNT_SIGNING_PUB_FILEPATH="${SERVICE_ACCOUNT_SIGNING_PUB_FILEP
 export SERVICE_ACCOUNT_SIGNING_KEY_FILEPATH="${SERVICE_ACCOUNT_SIGNING_KEY_FILEPATH:-}"
 export AZURE_CLIENT_ID_USER_ASSIGNED_IDENTITY="${AZURE_CLIENT_ID_USER_ASSIGNED_IDENTITY:-}"
 export AZURE_IDENTITY_ID_FILEPATH="${AZURE_IDENTITY_ID_FILEPATH:-$REPO_ROOT/azure_identity_id}"
-# TODO: Hack for figuring out auth mode when using azwi
-export AZWI_AUTH_MODE="--auth-mode login"
-# TODO: why are we building kubectl and kind again here ? Instead build it as part of pre-req at Makefile level.
+
 make --directory="${REPO_ROOT}" "${KUBECTL##*/}" "${KIND##*/}"
 
 # Export desired cluster name; default is "capz"
@@ -81,14 +79,9 @@ fi
 #    Required if not bringing your own identity via $AZURE_CLIENT_ID_USER_ASSIGNED_IDENTITY
 # AZURE_IDENTITY_ID_FILEPATH - A local filepath to store the newly created user-assigned identity if not bringing your own
 function checkAZWIENVPreReqsAndCreateFiles() {
-  if [[ -z "${SERVICE_ACCOUNT_SIGNING_PUB_FILEPATH}" || -z "${SERVICE_ACCOUNT_SIGNING_KEY_FILEPATH}" ]]; then
-    export SERVICE_ACCOUNT_SIGNING_PUB_FILEPATH="${REPO_ROOT}/capz-wi-sa.pub"
-    export SERVICE_ACCOUNT_SIGNING_KEY_FILEPATH="${REPO_ROOT}/capz-wi-sa.key"
-  fi
   if [ -z "${SERVICE_ACCOUNT_ISSUER}" ]; then
     # check if user is logged into azure cli
-    echo "Checking if user is logged into Azure CLI..."
-    if ! az account show; then
+    if ! az account show > /dev/null 2>&1; then
         echo "Please login to Azure CLI using 'az login'"
         exit 1
     fi
@@ -98,32 +91,34 @@ function checkAZWIENVPreReqsAndCreateFiles() {
       exit 1
     fi
 
-    echo "Checking if resource group '${AZWI_RESOURCE_GROUP}' exists in '${AZWI_LOCATION}'"
     if [ "$(az group exists --name "${AZWI_RESOURCE_GROUP}" --output tsv)" == 'false' ]; then
       echo "Creating resource group '${AZWI_RESOURCE_GROUP}' in '${AZWI_LOCATION}'"
       az group create --name "${AZWI_RESOURCE_GROUP}" --location "${AZWI_LOCATION}" --output none --only-show-errors --tags creationTimestamp="${TIMESTAMP}" jobName="${JOB_NAME}" buildProvenance="${BUILD_PROVENANCE}"
     fi
 
     # Ensure that our connection to storage is inherited from the existing Azure login context
-    echo "unsetting AZURE_STORAGE_KEY and AZURE_STORAGE_ACCOUNT to inherit from Azure CLI login context"
     unset AZURE_STORAGE_KEY
     unset AZURE_STORAGE_ACCOUNT
 
-    echo "Checking if storage account '${AZWI_STORAGE_ACCOUNT}' exists in '${AZWI_RESOURCE_GROUP}'"
     if ! az storage account show --name "${AZWI_STORAGE_ACCOUNT}" --resource-group "${AZWI_RESOURCE_GROUP}" > /dev/null 2>&1; then
       echo "Creating storage account '${AZWI_STORAGE_ACCOUNT}' in '${AZWI_RESOURCE_GROUP}'"
       az storage account create --resource-group "${AZWI_RESOURCE_GROUP}" --name "${AZWI_STORAGE_ACCOUNT}" --output none --only-show-errors --tags creationTimestamp="${TIMESTAMP}" jobName="${JOB_NAME}" buildProvenance="${BUILD_PROVENANCE}"
+
+      echo "Enabling static website hosting on storage account '${AZWI_STORAGE_ACCOUNT}'"
       az storage blob service-properties update --account-name "${AZWI_STORAGE_ACCOUNT}" --static-website
     fi
 
-    echo "Checking if storage container '${AZWI_STORAGE_CONTAINER}' exists in '${AZWI_STORAGE_ACCOUNT}'"
     if ! az storage container show --name "${AZWI_STORAGE_CONTAINER}" --account-name "${AZWI_STORAGE_ACCOUNT}" > /dev/null 2>&1; then
       echo "Creating storage container '${AZWI_STORAGE_CONTAINER}' in '${AZWI_STORAGE_ACCOUNT}'"
       az storage container create --name "${AZWI_STORAGE_CONTAINER}" --account-name "${AZWI_STORAGE_ACCOUNT}" --output none --only-show-errors
     fi
+
+    echo "Saving service account issuer to environment variable SERVICE_ACCOUNT_ISSUER"
     SERVICE_ACCOUNT_ISSUER=$(az storage account show --name "${AZWI_STORAGE_ACCOUNT}" -o json | jq -r .primaryEndpoints.web)
     export SERVICE_ACCOUNT_ISSUER
+
     AZWI_OPENID_CONFIG_FILEPATH="${REPO_ROOT}/openid-configuration.json"
+    echo "Saving openid-configuration document to '${AZWI_OPENID_CONFIG_FILEPATH}'"
     cat <<EOF > "${AZWI_OPENID_CONFIG_FILEPATH}"
 {
   "issuer": "${SERVICE_ACCOUNT_ISSUER}",
@@ -139,47 +134,78 @@ function checkAZWIENVPreReqsAndCreateFiles() {
   ]
 }
 EOF
-    openssl genrsa -out "${SERVICE_ACCOUNT_SIGNING_KEY_FILEPATH}" 2048
-    openssl rsa -in "${SERVICE_ACCOUNT_SIGNING_KEY_FILEPATH}" -pubout -out "${SERVICE_ACCOUNT_SIGNING_PUB_FILEPATH}"
+    if [[ -z "${SERVICE_ACCOUNT_SIGNING_PUB_FILEPATH}" || -z "${SERVICE_ACCOUNT_SIGNING_KEY_FILEPATH}" ]]; then
+      echo "Creating capz-wi-sa RSA keypair for service account signing"
+      export SERVICE_ACCOUNT_SIGNING_PUB_FILEPATH="${REPO_ROOT}/capz-wi-sa.pub"
+      export SERVICE_ACCOUNT_SIGNING_KEY_FILEPATH="${REPO_ROOT}/capz-wi-sa.key"
+
+      openssl genrsa -out "${SERVICE_ACCOUNT_SIGNING_KEY_FILEPATH}" 2048
+      openssl rsa -in "${SERVICE_ACCOUNT_SIGNING_KEY_FILEPATH}" -pubout -out "${SERVICE_ACCOUNT_SIGNING_PUB_FILEPATH}"
+
+    fi
+
+    echo "Saving jwks document to '${REPO_ROOT}/jwks.json'"
     AZWI_JWKS_JSON_FILEPATH="${REPO_ROOT}/jwks.json"
     "${AZWI}" jwks --public-keys "${SERVICE_ACCOUNT_SIGNING_PUB_FILEPATH}" --output-file "${AZWI_JWKS_JSON_FILEPATH}"
+
     echo "Uploading openid-configuration document to '${AZWI_STORAGE_ACCOUNT}' storage account"
     upload_to_blob "${AZWI_OPENID_CONFIG_FILEPATH}" ".well-known/openid-configuration"
+
     echo "Uploading jwks document to '${AZWI_STORAGE_ACCOUNT}' storage account"
     upload_to_blob "${AZWI_JWKS_JSON_FILEPATH}" "openid/v1/jwks"
     # TODO(@nawazkh): Should the below commands be uncommented?
     # echo "Removing key access on storage account as no further data writes are required"
     # az storage account update -n "${AZWI_STORAGE_ACCOUNT}" -g "${AZWI_RESOURCE_GROUP}" --subscription "${AZURE_SUBSCRIPTION_ID}" --allow-shared-key-access=false --output none --only-show-errors
   fi
+
   if [ -z "${AZURE_CLIENT_ID_USER_ASSIGNED_IDENTITY}" ]; then
-    echo "Checking if user-assigned identity '${USER_IDENTITY}' exists in '${AZWI_RESOURCE_GROUP}'"
     if [ -z "${USER_IDENTITY}" ]; then
         echo "USER_IDENTITY environment variable required if not bringing your own identity via AZURE_CLIENT_ID_USER_ASSIGNED_IDENTITY"
         exit 1
     fi
+  fi
+
+  # create a new user-assgined managed identity if it does not exist and assign it to the subscription with 'Contributor' role
+  if [ -z "$(az identity list --query "[?name=='${USER_IDENTITY}'].[name]" --output tsv)" ]; then
     echo "Creating identity '${USER_IDENTITY}' in '${AZWI_RESOURCE_GROUP}'"
     az identity create -n "${USER_IDENTITY}" -g "${AZWI_RESOURCE_GROUP}" -l "${AZWI_LOCATION}" --output none --only-show-errors --tags creationTimestamp="${TIMESTAMP}" jobName="${JOB_NAME}" buildProvenance="${BUILD_PROVENANCE}"
 
+    echo "Saving identity id to '${AZURE_IDENTITY_ID_FILEPATH}'"
     AZURE_IDENTITY_ID=$(az identity show -n "${USER_IDENTITY}" -g "${AZWI_RESOURCE_GROUP}" --query clientId -o tsv)
     AZURE_IDENTITY_ID_PRINCIPAL_ID=$(az identity show -n "${USER_IDENTITY}" -g "${AZWI_RESOURCE_GROUP}" --query principalId -o tsv)
-    echo "created AZURE_IDENTITY_ID: ${AZURE_IDENTITY_ID} and AZURE_IDENTITY_ID_PRINCIPAL_ID: ${AZURE_IDENTITY_ID_PRINCIPAL_ID}"
     echo "${AZURE_IDENTITY_ID}" > "${AZURE_IDENTITY_ID_FILEPATH}"
-    until az role assignment create --assignee-object-id "${AZURE_IDENTITY_ID_PRINCIPAL_ID}" --role "Contributor" --scope "/subscriptions/${AZURE_SUBSCRIPTION_ID}" --assignee-principal-type ServicePrincipal --output none --only-show-errors; do
+
+    echo "Assigning identity '${USER_IDENTITY}' to rg '${AZWI_RESOURCE_GROUP}' with 'Contributor' role"
+    until az role assignment create --assignee-object-id "${AZURE_IDENTITY_ID_PRINCIPAL_ID}" --role "Owner" --scope "/subscriptions/${AZURE_SUBSCRIPTION_ID}" --assignee-principal-type ServicePrincipal --output none --only-show-errors; do
       sleep 5
     done
-    echo "Creating federated credentials for capz-federated-identity"
-    az identity federated-credential create -n "capz-federated-identity" \
-      --identity-name "${USER_IDENTITY}" \
-      -g "${AZWI_RESOURCE_GROUP}" \
-      --issuer "${SERVICE_ACCOUNT_ISSUER}" \
-      --subject "system:serviceaccount:capz-system:capz-manager" --output none --only-show-errors
-    echo "Creating federated credentials for aso-federated-identity"
-    az identity federated-credential create -n "aso-federated-identity" \
-      --identity-name "${USER_IDENTITY}" \
-      -g "${AZWI_RESOURCE_GROUP}" \
-      --issuer "${SERVICE_ACCOUNT_ISSUER}" \
-      --subject "system:serviceaccount:capz-system:azureserviceoperator-default" --output none --only-show-errors
+  else
+    echo "Identity '${USER_IDENTITY}' already exists in subscription '${AZURE_SUBSCRIPTION_ID}'"
+    echo "Adding identity '${USER_IDENTITY}' to rg '${AZWI_RESOURCE_GROUP}'"
+    # USER_IDENTITY_RESOURCE_GROUP=$(az identity list --query "[?name=='${USER_IDENTITY}'].[resourceGroup]" --output tsv)
+    USER_IDENTITY_PRINCIPAL_ID=$(az identity list --query "[?name=='${USER_IDENTITY}'].[principalId]" --output tsv)
+
+    # TODO: this should be a no-op if the identity is already created in the resource group
+    az role assignment create \
+      --assignee-object-id  "${USER_IDENTITY_PRINCIPAL_ID}" \
+      --role "Contributor" \
+      --assignee-principal-type "ServicePrincipal" \
+      --scope "/subscriptions/${AZURE_SUBSCRIPTION_ID}/resourceGroups/${AZWI_RESOURCE_GROUP}"
   fi
+
+  echo "Creating federated credentials for capz-federated-identity"
+  az identity federated-credential create -n "capz-federated-identity" \
+    --identity-name "${USER_IDENTITY}" \
+    -g "${AZWI_RESOURCE_GROUP}" \
+    --issuer "${SERVICE_ACCOUNT_ISSUER}" \
+    --subject "system:serviceaccount:capz-system:capz-manager" --output none --only-show-errors
+
+  echo "Creating federated credentials for aso-federated-identity"
+  az identity federated-credential create -n "aso-federated-identity" \
+    --identity-name "${USER_IDENTITY}" \
+    -g "${AZWI_RESOURCE_GROUP}" \
+    --issuer "${SERVICE_ACCOUNT_ISSUER}" \
+    --subject "system:serviceaccount:capz-system:azureserviceoperator-default" --output none --only-show-errors
 }
 
 function upload_to_blob() {
@@ -201,8 +227,8 @@ function createKindForAZWI() {
   echo "creating workload-identity-enabled kind configuration"
   if [ -n "${CONFORMANCE_FLAVOR}" ] && [ -n "${SERVICE_ACCOUNT_SIGNING_PUB}" ] && [ -n "${SERVICE_ACCOUNT_SIGNING_KEY}" ]; then
     echo "using pre-existing service-account-issuer for kind cluster"
-    KIND_SERVICE_ACCOUNT_SIGNING_PUB_FILEPATH="${REPO_ROOT}/kind-wi-sa.pub"
-    KIND_SERVICE_ACCOUNT_SIGNING_KEY_FILEPATH="${REPO_ROOT}/kind-wi-sa.key"
+    KIND_SERVICE_ACCOUNT_SIGNING_PUB_FILEPATH="${KIND_SERVICE_ACCOUNT_SIGNING_PUB_FILEPATH:-${REPO_ROOT}/kind-wi-sa.pub}"
+    KIND_SERVICE_ACCOUNT_SIGNING_KEY_FILEPATH="${KIND_SERVICE_ACCOUNT_SIGNING_KEY_FILEPATH:-${REPO_ROOT}/kind-wi-sa.key}"
     echo "${SERVICE_ACCOUNT_SIGNING_PUB}" > "${KIND_SERVICE_ACCOUNT_SIGNING_PUB_FILEPATH}"
     echo "${SERVICE_ACCOUNT_SIGNING_KEY}" > "${KIND_SERVICE_ACCOUNT_SIGNING_KEY_FILEPATH}"
     KIND_SERVICE_ACCOUNT_ISSUER="https://oidcissuercapzci.blob.core.windows.net/oidc-capzci/"
