@@ -464,5 +464,6 @@ func AzureAPIServerILBSpec(ctx context.Context, inputGetter func() AzureAPIServe
 }
 
 func PeerVnets(ctx context.Context, inputGetter func() AzureAPIServerILBSpecInput) {
-
+	// TODO: shall I have this shell commands in this func instead ?
+	Logf("In PeerVnets func")
 }

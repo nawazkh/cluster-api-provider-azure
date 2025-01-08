@@ -20,9 +20,22 @@ set -o pipefail # make the pipeline fail if any command in it fails.
 REPO_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
 
 source_tilt_settings() {
-  if [ "$#" -ne 1 ]; then
-    echo "Usage: $0 <tilt-settings.yaml>"
-    exit 1
+
+  found=false
+  # echo "checking for tilt-settings.yaml..."
+  # echo "args: $@"
+  for arg in "$@"; do
+      if [ "$arg" == "tilt-settings.yaml" ]; then
+          found=true
+          break
+      fi
+  done
+
+  if [ "$found" == true ]; then
+      echo "tilt-settings.yaml was passed as an argument."
+  else
+      echo "tilt-settings.yaml was not found."
+      exit 1
   fi
 
   TILT_SETTINGS_FILE="$1"
@@ -33,18 +46,18 @@ source_tilt_settings() {
     exit 1
   fi
 
-  echo "Reading variables from $TILT_SETTINGS_FILE under 'kustomize_substition'..."
+  echo "Reading variables from $TILT_SETTINGS_FILE under 'kustomize_substitutions'..."
 
-  # Get the list of keys under kustomize_substition
-  VAR_KEYS=$(yq e '.kustomize_substition | keys | .[]' "$TILT_SETTINGS_FILE" 2>/dev/null || true)
+  # Get the list of keys under kustomize_substitutions
+  VAR_KEYS=$(yq e '.kustomize_substitutions | keys | .[]' "$TILT_SETTINGS_FILE" 2>/dev/null || true)
 
   # If there's no such key or it's empty, VAR_KEYS will be empty
   if [ -z "$VAR_KEYS" ]; then
-    echo "No variables found under 'kustomize_substition'."
+    echo "No variables found under 'kustomize_substitutions'."
   else
     for key in $VAR_KEYS; do
       # Read the value of each key
-      value=$(yq e ".kustomize_substition[\"$key\"]" "$TILT_SETTINGS_FILE")
+      value=$(yq e ".kustomize_substitutions[\"$key\"]" "$TILT_SETTINGS_FILE")
       # Export the key/value pair
       export "$key=$value"
       echo "Exported $key=$value"

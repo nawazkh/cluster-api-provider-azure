@@ -6,7 +6,8 @@
 ##@ E2E Testing:
 .PHONY: test-e2e-run
 test-e2e-run: generate-e2e-templates install-tools kind-create-bootstrap ## Run e2e tests.
-	@$(ENVSUBST) < $(E2E_CONF_FILE) > $(E2E_CONF_FILE_ENVSUBST) && \
+	@source ./scripts/peer-vnets.sh && source_tilt_settings tilt-settings.yaml; \
+	$(ENVSUBST) < $(E2E_CONF_FILE) > $(E2E_CONF_FILE_ENVSUBST) && \
 	if [ -z "${AZURE_CLIENT_ID_USER_ASSIGNED_IDENTITY}" ]; then \
 		export AZURE_CLIENT_ID_USER_ASSIGNED_IDENTITY=$(shell cat $(AZURE_IDENTITY_ID_FILEPATH)); \
 	fi; \

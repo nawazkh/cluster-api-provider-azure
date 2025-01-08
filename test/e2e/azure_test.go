@@ -1180,11 +1180,6 @@ var _ = Describe("Workload cluster creation", func() {
 						}
 					})
 				}),
-				withPreWaitForCluster(func() {
-					// TODO: only invoke this in local runs
-					// Peer VNets of the mgmt cluster and workload cluster
-
-				}),
 			), result)
 
 			By("Probing workload cluster with APIServerILB feature gate", func() {
@@ -1233,6 +1228,20 @@ var _ = Describe("Workload cluster creation", func() {
 							BootstrapClusterProxy: bootstrapClusterProxy,
 							Namespace:             namespace,
 							ClusterName:           clusterName,
+						}
+					})
+				}),
+				withPreWaitForCluster(func() {
+					// TODO: only invoke this in local runs
+					// Peer VNets of the mgmt cluster and workload cluster
+					PeerVnets(ctx, func() AzureAPIServerILBSpecInput {
+						return AzureAPIServerILBSpecInput{
+							BootstrapClusterProxy:                   bootstrapClusterProxy,
+							Cluster:                                 result.Cluster,
+							Namespace:                               namespace,
+							ClusterName:                             clusterName,
+							WaitIntervals:                           e2eConfig.GetIntervals(specName, "wait-worker-nodes"),
+							TemplateHasPrivateIPCustomDNSResolution: true,
 						}
 					})
 				}),
