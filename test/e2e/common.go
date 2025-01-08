@@ -443,3 +443,9 @@ func withAzureCNIv1Manifest(manifestPath string) func(*clusterctl.ApplyClusterTe
 		input.CNIManifestPath = manifestPath
 	}
 }
+
+func withPreWaitForCluster(preWaitForCluster func()) func(*clusterctl.ApplyClusterTemplateAndWaitInput) {
+	return func(input *clusterctl.ApplyClusterTemplateAndWaitInput) {
+		input.PreWaitForCluster = preWaitForCluster
+	}
+}

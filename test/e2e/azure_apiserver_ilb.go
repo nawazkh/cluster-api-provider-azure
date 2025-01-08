@@ -462,3 +462,7 @@ func AzureAPIServerILBSpec(ctx context.Context, inputGetter func() AzureAPIServe
 	err = wait.ExponentialBackoffWithContext(ctx, backoff, retryDSFn)
 	Expect(err).NotTo(HaveOccurred())
 }
+
+func PeerVnets(ctx context.Context, inputGetter func() AzureAPIServerILBSpecInput) {
+
+}

@@ -1180,6 +1180,11 @@ var _ = Describe("Workload cluster creation", func() {
 						}
 					})
 				}),
+				withPreWaitForCluster(func() {
+					// TODO: only invoke this in local runs
+					// Peer VNets of the mgmt cluster and workload cluster
+
+				}),
 			), result)
 
 			By("Probing workload cluster with APIServerILB feature gate", func() {
