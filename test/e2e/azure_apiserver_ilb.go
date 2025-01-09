@@ -88,6 +88,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"strings"
@@ -465,8 +466,6 @@ func AzureAPIServerILBSpec(ctx context.Context, inputGetter func() AzureAPIServe
 }
 
 func PeerVnets(ctx context.Context, inputGetter func() AzureAPIServerILBSpecInput) {
-	// TODO: shall I have this shell commands in this func instead ?
-	Logf("In PeerVnets func")
 	var (
 		specName = "azure-apiserver-ilb"
 		input    AzureAPIServerILBSpecInput
@@ -483,15 +482,24 @@ func PeerVnets(ctx context.Context, inputGetter func() AzureAPIServerILBSpecInpu
 	peer_command := "CLUSTER_NAME=" + input.ClusterName + " source " + peer_vnets_script + " && peer_vnets"
 	cmd := exec.Command("sh", "-c", peer_command)
 	Logf("cmd to be run %v", cmd)
-	output, err := cmd.Output()
 
+	// ------------------------ //
+	// output, err := cmd.Output()
+	// if err != nil {
+	// 	Logf("Error running peer-vnets.sh: %v", err)
+	// }
+	// Logf("Output of peer-vnets.sh: %v", string(output))
+
+	/*
+		// Replace the below block with the above block when debugging the peering VNets script
+		// The below code suppresses the StdOut and StdErr
+	*/
+
+	cmd.Stdout = io.Discard
+	cmd.Stderr = io.Discard
+	err := cmd.Run()
 	if err != nil {
 		Logf("Error running peer-vnets.sh: %v", err)
-		Logf("Output: %v", string(output))
-		Logf("Error: %v", err)
 	}
-	Expect(err).NotTo(HaveOccurred())
-
-	fmt.Println(string(output))
-
+	// ------------------------ //
 }
