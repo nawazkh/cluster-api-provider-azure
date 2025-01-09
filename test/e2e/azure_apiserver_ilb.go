@@ -89,6 +89,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -466,14 +467,30 @@ func AzureAPIServerILBSpec(ctx context.Context, inputGetter func() AzureAPIServe
 func PeerVnets(ctx context.Context, inputGetter func() AzureAPIServerILBSpecInput) {
 	// TODO: shall I have this shell commands in this func instead ?
 	Logf("In PeerVnets func")
+	var (
+		specName = "azure-apiserver-ilb"
+		input    AzureAPIServerILBSpecInput
+	)
+
+	input = inputGetter()
+	Expect(input.ClusterName).NotTo(BeEmpty(), "Invalid argument. input.ClusterName can't be empty when calling %s spec", specName)
+
+	peer_vnets_script := e2eConfig.GetVariable(PeerVNetsScriptPath)
+	Expect(peer_vnets_script).NotTo(BeEmpty(), "PEER_VNETS_SCRIPT_PATH env var is required")
+	Expect(len(peer_vnets_script)).To(BeNumerically(">", 0), "PEER_VNETS_SCRIPT_PATH should have length greater than 0")
 
 	// shell commands
-	cmd := exec.Command("bash", "-c", "source ./scripts/peer-vnets.sh && peer_vnets")
+	peer_command := "CLUSTER_NAME=" + input.ClusterName + " source " + peer_vnets_script + " && peer_vnets"
+	cmd := exec.Command("sh", "-c", peer_command)
+	Logf("cmd to be run %v", cmd)
+	output, err := cmd.Output()
 
-	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("failed to invoke shell function: %w\nOutput: %s", err, string(output))
+		Logf("Error running peer-vnets.sh: %v", err)
+		Logf("Output: %v", string(output))
+		Logf("Error: %v", err)
 	}
+	Expect(err).NotTo(HaveOccurred())
 
 	fmt.Println(string(output))
 

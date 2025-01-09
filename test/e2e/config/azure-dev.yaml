@@ -243,6 +243,7 @@ variables:
   CI_RG: "${CI_RG:-capz-ci}"
   USER_IDENTITY: "${USER_IDENTITY:-cloud-provider-user-identity}"
   EXP_APISERVER_ILB: "true"
+  PEER_VNETS_SCRIPT_PATH: "${PWD}/scripts/peer-vnets.sh"
 
 intervals:
   default/wait-controllers: ["3m", "10s"]
