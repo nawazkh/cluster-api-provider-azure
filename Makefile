@@ -716,8 +716,8 @@ test-cover: test ## Run tests with code coverage and generate reports.
 	./hack/codecov-ignore.sh
 	go tool cover -html=coverage.out -o coverage.html
 
-.PHONY: kind-create-bootstrap
-kind-create-bootstrap: $(KUBECTL) ## Create capz kind bootstrap cluster.
+.PHONY: create-bootstrap
+create-bootstrap: $(KUBECTL) ## Create capz kind bootstrap cluster.
 	if [ "$(MGMT_CLUSTER_TYPE)" == "aks" ]; then \
 		MGMT_CLUSTER_NAME=capz-e2e \
 		AKS_RESOURCE_GROUP=capz-e2e \

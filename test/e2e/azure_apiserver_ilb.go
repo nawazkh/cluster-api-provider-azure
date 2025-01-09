@@ -466,4 +466,15 @@ func AzureAPIServerILBSpec(ctx context.Context, inputGetter func() AzureAPIServe
 func PeerVnets(ctx context.Context, inputGetter func() AzureAPIServerILBSpecInput) {
 	// TODO: shall I have this shell commands in this func instead ?
 	Logf("In PeerVnets func")
+
+	// shell commands
+	cmd := exec.Command("bash", "-c", "source ./scripts/peer-vnets.sh && peer_vnets")
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to invoke shell function: %w\nOutput: %s", err, string(output))
+	}
+
+	fmt.Println(string(output))
+
 }
