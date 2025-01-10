@@ -88,7 +88,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"strings"
@@ -484,22 +483,35 @@ func PeerVnets(ctx context.Context, inputGetter func() AzureAPIServerILBSpecInpu
 	Logf("cmd to be run %v", cmd)
 
 	// ------------------------ //
-	// output, err := cmd.Output()
-	// if err != nil {
-	// 	Logf("Error running peer-vnets.sh: %v", err)
-	// }
-	// Logf("Output of peer-vnets.sh: %v", string(output))
+	var stdoutBuf, stderrBuf bytes.Buffer
+
+	// Capture stdout, stderr separately
+	cmd.Stdout = &stdoutBuf
+	cmd.Stderr = &stderrBuf
+	err := cmd.Run()
+
+	// Convert buffers to string
+	stdoutStr := stdoutBuf.String()
+	stderrStr := stderrBuf.String()
+
+	Logf("Stdout: %s", stdoutStr)
+	Logf("Stderr: %s", stderrStr)
+
+	if err != nil {
+		// Command failed (non-zero exit code or something else)
+		Logf("Error: %v", err)
+	}
 
 	/*
 		// Replace the below block with the above block when debugging the peering VNets script
 		// The below code suppresses the StdOut and StdErr
 	*/
 
-	cmd.Stdout = io.Discard
-	cmd.Stderr = io.Discard
-	err := cmd.Run()
-	if err != nil {
-		Logf("Error running peer-vnets.sh: %v", err)
-	}
+	// cmd.Stdout = io.Discard
+	// cmd.Stderr = io.Discard
+	// err := cmd.Run()
+	// if err != nil {
+	// 	Logf("Error running peer-vnets.sh: %v", err)
+	// }
 	// ------------------------ //
 }

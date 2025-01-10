@@ -1265,7 +1265,7 @@ var _ = Describe("Workload cluster creation", func() {
 		})
 	})
 
-	Context("Local test: Creating a self-managed VM based cluster using API Server ILB feature gate and fully spec-ed out APIServer ILB template [OPTIONAL][API-Server-ILB][LOCAL]", func() {
+	Context("Local test: Creating a self-managed VM based cluster using API Server ILB feature gate and fully spec-ed out APIServer ILB template [OPTIONAL][API-Server-ILB]", func() {
 		It("with three controlplane node and three worker nodes", func() {
 			clusterName = getClusterName(clusterNamePrefix, "apiserver-ilb")
 
@@ -1288,21 +1288,15 @@ var _ = Describe("Workload cluster creation", func() {
 					WaitForControlPlaneInitialized: EnsureControlPlaneInitializedNoAddons,
 				}),
 				withPostMachinesProvisioned(func() {
-					PeerVnets(ctx, func() AzureAPIServerILBSpecInput {
-						return AzureAPIServerILBSpecInput{
-							BootstrapClusterProxy:                   bootstrapClusterProxy,
-							Cluster:                                 result.Cluster,
-							Namespace:                               namespace,
-							ClusterName:                             clusterName,
-							WaitIntervals:                           e2eConfig.GetIntervals(specName, "wait-worker-nodes"),
-							TemplateHasPrivateIPCustomDNSResolution: true,
+					EnsureDaemonsets(ctx, func() DaemonsetsSpecInput {
+						return DaemonsetsSpecInput{
+							BootstrapClusterProxy: bootstrapClusterProxy,
+							Namespace:             namespace,
+							ClusterName:           clusterName,
 						}
 					})
 				}),
 				// withPreWaitForCluster(func() {
-				// 	// TODO: only invoke this in local runs
-				// 	// Peer VNets of the mgmt cluster and workload cluster
-				//
 				// }),
 			), result)
 
@@ -1323,6 +1317,5 @@ var _ = Describe("Workload cluster creation", func() {
 			By("PASSED!")
 		})
 	})
-
 	// TODO: add a same test as above for a windows cluster
 })
