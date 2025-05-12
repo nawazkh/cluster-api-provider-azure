@@ -86,7 +86,7 @@ jobs:
                         --title "dependency:: bump $tool to $latest" \
                         --body "This PR updates \`$tool\` from \`$current\` to \`$latest\`." \
                         --base main \
-                        --label "dependency, area/dependencies, release-note/none, ok-to-test" \
+                        --label "dependencies, area/dependency, release-note/none, ok-to-test" \
                         --head "$branch"
                     else
                     echo "$tool is already up to date ($current)"
