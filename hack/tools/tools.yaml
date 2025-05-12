@@ -1,5 +1,5 @@
 tools:
-  controller-gen: v0.16.1
+  controller-gen: v0.18.0
   conversion-gen: v0.31.0
   envsubst: v2.0.0-20210730161058-179042472c46
   kustomize: v5.4.1
