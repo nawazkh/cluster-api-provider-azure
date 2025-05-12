@@ -12,5 +12,5 @@ tools:
   helm: v3.14.4
   yq: v4.35.2
   kind: v0.27.0
-  codespell: 2.2.6
+  codespell: v2.4.1
   setup-envtest: release-0.19
