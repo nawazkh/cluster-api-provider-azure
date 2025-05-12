@@ -27,7 +27,7 @@ jobs:
                 GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               run: |
                 set -euo pipefail
-                file="hack/tools.yaml"
+                file="hack/tools/tools.yaml"
                 tools=$(yq eval '.tools | keys | .[]' $file)
 
                 get_latest_release() {
