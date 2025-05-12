@@ -5,7 +5,7 @@ tools:
   azwi: v1.2.2
   mockgen: v0.4.0
   release-notes: v0.18.0
-  kpromo: v4.0.5
+  kpromo: "null"
   go-apidiff: v0.8.2
   kubectl: v1.29.10
   helm: v3.14.4
