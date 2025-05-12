@@ -1,7 +1,7 @@
 tools:
   controller-gen: v0.16.1
   conversion-gen: v0.31.0
-  kustomize: v5.4.1
+  kustomize: kustomize/v5.6.0
   azwi: v1.2.2
   mockgen: v0.4.0
   release-notes: v0.18.0
