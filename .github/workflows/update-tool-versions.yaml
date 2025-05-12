@@ -68,7 +68,7 @@ jobs:
                     if [[ "$repo" == "setup-envtest" ]]; then
                     latest=$(get_setup_envtest_latest)
                     elif [[ "$tool" == "kubectl" ]]; then
-                    latest="v$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)"
+                    latest="$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)"
                     else
                     latest=$(get_latest_release $repo)
                     fi
