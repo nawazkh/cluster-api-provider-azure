@@ -14,3 +14,4 @@ tools:
   kind: v0.27.0
   codespell: 2.2.6
   setup-envtest: release-0.19
+  golangci-lint: v2.1.6
