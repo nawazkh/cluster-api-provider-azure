@@ -8,7 +8,7 @@ tools:
   kpromo: v4.0.5
   go-apidiff: v0.8.2
   kubectl: v1.29.10
-  helm: v3.14.4
+  helm: v3.17.3
   yq: v4.35.2
   kind: v0.27.0
   codespell: 2.2.6
