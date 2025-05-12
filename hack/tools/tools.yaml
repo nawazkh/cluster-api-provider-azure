@@ -6,7 +6,7 @@ tools:
   mockgen: v0.4.0
   release-notes: v0.18.0
   kpromo: v4.0.5
-  go-apidiff: v0.8.2
+  go-apidiff: "null"
   kubectl: v1.29.10
   helm: v3.14.4
   yq: v4.35.2
