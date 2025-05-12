@@ -1,0 +1,71 @@
+name: Update Tool Versions
+
+on:
+    schedule:
+      - cron: '0 0 * * 0'
+    workflow_dispatch:
+
+jobs:
+    update-tools:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+            pull-requests: write
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Install yq and jq
+              run: |
+                sudo apt-get update && sudo apt-get install -y jq
+                curl -sL https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -o /usr/local/bin/yq
+                chmod +x /usr/local/bin/yq
+
+            - name: Update tools.yaml
+              run: |
+                file="hack/tools.yaml"
+
+                update() {
+                name=$1
+                repo=$2
+                version=$(curl -s https://api.github.com/repos/$repo/releases/latest | jq -r .tag_name)
+                yq -i ".tools.$name = \"$version\"" $file
+                }
+
+                update controller-gen sigs.k8s.io/controller-tools
+                update conversion-gen k8s.io/code-generator
+                update envsubst drone/envsubst
+                update golangci-lint golangci/golangci-lint
+                update kustomize kubernetes-sigs/kustomize
+                update azwi Azure/azure-workload-identity
+                update mockgen golang/mock
+                update release-notes kubernetes/release
+                update kpromo kubernetes-sigs/kpromo
+                update go-apidiff google/go-apidiff
+                update ginkgo onsi/ginkgo
+                update kubectl kubernetes/kubernetes
+                update helm helm/helm
+                update yq mikefarah/yq
+                update kind kubernetes-sigs/kind
+                update codespell codespell-project/codespell
+
+                # setup-envtest is tagged differently
+                release=$(curl -s https://api.github.com/repos/kubernetes-sigs/controller-runtime/git/matching-refs/tags/setup-envtest | jq -r '.[-1].ref' | sed 's|refs/tags/setup-envtest/||')
+                yq -i ".tools.setup-envtest = \"release-$release\"" $file
+
+            - name: Create Pull Request
+              run: |
+                git config user.name "github-actions[bot]"
+                git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+                git checkout -b auto/update-tools
+                git add hack/tools.yaml
+                git commit -m "chore: update tools.yaml"
+                git push origin auto/update-tools
+
+                gh pr create \
+                    --title "chore: update CLI tool versions" \
+                    --body "Automated update of CLI tool versions in tools.yaml" \
+                    --base main \
+                    --head auto/update-tools
+              env:
+                GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
