@@ -1,5 +1,5 @@
 tools:
-  controller-gen: v0.16.1
+  controller-gen: v0.18.0
   conversion-gen: v0.31.0
   kustomize: v5.4.1
   azwi: v1.2.2
